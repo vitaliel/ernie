@@ -88,7 +88,7 @@ You can make BERT-RPC calls from Ruby with the [BERTRPC gem](http://github.com/m
 
 Known Issues
 ------------
-# Streaming does not work with erlang from debian lenny, but works with erlang-nox package from testing: 1:13.b.2.1-dfsg-1 version works fine. See [this message](http://www.assembla.com/spaces/ruby-code-browser/messages/a_KnM41QOr3OfueJe5aVNr) for more details.
+* Streaming does not work with erlang from debian lenny, but works with erlang-nox package from testing: 1:13.b.2.1-dfsg-1 version works fine. See [this message](http://www.assembla.com/spaces/ruby-code-browser/messages/a_KnM41QOr3OfueJe5aVNr) for more details.
 
 Contribute
 ----------
