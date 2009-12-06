@@ -32,8 +32,6 @@ Running
         -n, --number NUMBER              Number of handler instances
         -d, --detached                   Run as a daemon
         -P, --pidfile PIDFILE            Location to write pid file.
-        -u, --user USERNAME              The user to run as
-        -g, --group GROUP                The group to run as
 
     Commands:
       <none>                Start an Ernie server.
@@ -50,13 +48,22 @@ Running
         Reload the handlers for the ernie server currently running on
         port 9999.
 
-      ernie -d -p 9998 -n 5 -h calc.rb -u www-data -u www-data
-        Similar to the above command to start the ernie server, but this
-        one will run the Erlang server and the child handlers as the
-        www-data user and group.
-
 Example Handler
 ---------------
+
+Using a Ruby module and Ernie.expose:
+
+    require 'ernie'
+    
+    module Calc
+      def add(a, b)
+        a + b
+      end
+    end
+    
+    Ernie.expose(:calc, Calc)
+    
+Using the DSL (this will be deprecated in a future release):
 
     require 'ernie'
 
@@ -65,6 +72,28 @@ Example Handler
         a + b
       end
     end
+
+
+Logging
+-------
+
+You can have logging sent to a file by adding these lines to your handler:
+
+    logfile('/var/log/ernie.log')
+    loglevel(Logger::INFO)
+
+This will log startup info, requests, and error messages to the log. Choosing
+Logger::DEBUG will include the response (be careful, doing this can generate
+very large log files).
+
+
+Autostart
+---------
+
+Normally Ernie handlers will become active after the file has been loaded in.
+you can disable this behavior by setting:
+
+    Ernie.auto_start = false
 
 
 Example BERT-RPC call for above example
@@ -95,10 +124,14 @@ Contribute
 
 If you'd like to hack on Ernie, start by forking my repo on GitHub:
 
-http://github.com/mojombo/ernie
+    http://github.com/mojombo/ernie
 
-To get all of the dependencies, install the gem first. The best way to get
-your changes merged back into core is as follows:
+To get all of the dependencies, install the gem first. To run ernie from
+source, you must first build the Erlang code:
+
+    rake ebuild
+
+The best way to get your changes merged back into core is as follows:
 
 1. Clone down your fork
 1. Create a topic branch to contain your change

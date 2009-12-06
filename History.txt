@@ -1,3 +1,16 @@
+= 1.3.0 / 2009-11-30
+  * API Additions
+    * Add loglevel for setting log level
+    * Add Ernie.auto_start bool
+  * Major changes
+    * Better logging granularity
+
+= 1.2.0 / 2009-11-23
+  * API Additions
+    * Add Ernie.expose
+  * Internal Changes
+    * Remove 15s internal timeout
+
 = 1.1.0 / 2009-10-28
   * Major changes
     * Remove dependency on Erlectricity

@@ -4,12 +4,15 @@ require 'logger'
 
 class Ernie
   class << self
-    attr_accessor :mods, :current_mod, :logger
+    attr_accessor :mods, :current_mod, :log
+    attr_accessor :auto_start
   end
 
   self.mods = {}
   self.current_mod = nil
-  self.logger = nil
+  self.log = Logger.new(STDOUT)
+  self.log.level = Logger::INFO
+  self.auto_start = true
 
   # Record a module.
   #   +name+ is the module Symbol
@@ -32,20 +35,36 @@ class Ernie
     self.current_mod.fun(name, block)
   end
 
+  # Expose all public methods in a Ruby module:
+  #   +name+ is the ernie module Symbol
+  #   +mixin+ is the ruby module whose public methods are exposed
+  #
+  # Returns nothing
+  def self.expose(name, mixin)
+    context = Object.new
+    context.extend mixin
+    mod(name, lambda {
+      mixin.public_instance_methods.each do |meth|
+        fun(meth.to_sym, context.method(meth))
+      end
+    })
+    context
+  end
+
   # Set the logfile to given path.
   #   +file+ is the String path to the logfile
   #
   # Returns nothing
   def self.logfile(file)
-    self.logger = Logger.new(file)
+    self.log = Logger.new(file)
   end
 
-  # If logging is enabled, log the given text.
-  #   +text+ is the String to log
+  # Set the log level.
+  #   +level+ is the Logger level (Logger::WARN, etc)
   #
   # Returns nothing
-  def self.log(text)
-    self.logger.info(text) if self.logger
+  def self.loglevel(level)
+    self.log.level = level
   end
 
   # Dispatch the request to the proper mod:fun.
@@ -98,8 +117,8 @@ class Ernie
   #
   # Loops forever
   def self.start
-    self.log("Starting")
-    self.log(self.mods.inspect)
+    self.log.info("(#{Process.pid}) Starting")
+    self.log.debug(self.mods.inspect)
 
     input = IO.new(3)
     output = IO.new(4)
@@ -110,69 +129,69 @@ class Ernie
       iruby = self.read_berp(input)
       unless iruby
         puts "Could not read BERP length header. Ernie server may have gone away. Exiting now."
+        self.log.info("(#{Process.pid}) Could not read BERP length header. Ernie server may have gone away. Exiting now.")
         exit!
       end
 
       if iruby.size == 4 && iruby[0] == :call
         mod, fun, args = iruby[1..3]
-        self.log("-> " + iruby.inspect)
+        self.log.info("-> " + iruby.inspect)
 
         begin
           res = self.dispatch(mod, fun, args)
 
           if res.is_a?(IO)
-            self.log("<- byte stream")
+            self.log.info("<- byte stream")
 
             begin
               info = t[:info, :stream, []]
-              self.log("<- " + info.inspect)
+              self.log.debug("<- " + info.inspect)
               write_berp(output, info)
               write_berp(output, t[:reply, []])
 
               enc = BERT::Encode.new(output)
 
               while (buf = res.read(4 * 1024)) && buf.length > 0
-                #self.log("<- byte stream write #{buf.length} bytes")
+                # self.log.debug("<- byte stream write #{buf.length} bytes")
                 enc.write_4(buf.length)
                 enc.write_string(buf)
               end
-
-              #self.log("<- byte stream end, 4 null bytes")
+              # self.log.debug("<- byte stream end, 4 null bytes")
               enc.write_4(0)
             ensure
               res.close
             end
           else
             oruby = t[:reply, res]
-            self.log("<- " + oruby.inspect)
+            self.log.debug("<- " + oruby.inspect)
 
             write_berp(output, oruby)
           end
         rescue ServerError => e
           oruby = t[:error, t[:server, 0, e.class.to_s, e.message, e.backtrace]]
-          self.log("<- " + oruby.inspect)
-          self.log(e.backtrace.join("\n"))
+          self.log.error("<- " + oruby.inspect)
+          self.log.error(e.backtrace.join("\n"))
           write_berp(output, oruby)
         rescue Object => e
           oruby = t[:error, t[:user, 0, e.class.to_s, e.message, e.backtrace]]
-          self.log("<- " + oruby.inspect)
-          self.log(e.backtrace.join("\n"))
+          self.log.error("<- " + oruby.inspect)
+          self.log.error(e.backtrace.join("\n"))
           write_berp(output, oruby)
         end
       elsif iruby.size == 4 && iruby[0] == :cast
         mod, fun, args = iruby[1..3]
-        self.log("-> " + [:cast, mod, fun, args].inspect)
+        self.log.info("-> " + [:cast, mod, fun, args].inspect)
         begin
           self.dispatch(mod, fun, args)
         rescue Object => e
-          self.log(e.inspect)
-          self.log(e.backtrace.join("\n"))
+          self.log.error(e.inspect)
+          self.log.error(e.backtrace.join("\n"))
         end
         write_berp(output, t[:noreply])
       else
-        self.log("-> " + iruby.inspect)
+        self.log.error("-> " + iruby.inspect)
         oruby = t[:error, t[:server, 0, "Invalid request: #{iruby.inspect}"]]
-        self.log("<- " + oruby.inspect)
+        self.log.error("<- " + oruby.inspect)
         write_berp(output, oruby)
       end
     end
@@ -190,6 +209,7 @@ class Ernie::Mod
   end
 
   def fun(name, block)
+    raise TypeError, "block required" if block.nil?
     self.funs[name] = block
   end
 end
@@ -208,6 +228,10 @@ def logfile(name)
   Ernie.logfile(name)
 end
 
+def loglevel(level)
+  Ernie.loglevel(level)
+end
+
 at_exit do
-  Ernie.start unless $test
+  Ernie.start if Ernie.auto_start
 end
