@@ -154,13 +154,15 @@ class Ernie
 
               enc = BERT::Encode.new(output)
 
-              while (buf = res.read(4 * 1024)) && buf.length > 0
+              while (buf = res.read(10 * 1024)) && buf.length > 0
                 # self.log.debug("<- byte stream write #{buf.length} bytes")
                 enc.write_4(buf.length)
                 enc.write_string(buf)
-                sres = self.read_berp(input)
-                # self.log.debug("-> #{sres.inspect}") if sres != :ok
-                break unless sres == :ok
+
+                unless (s = self.read_berp(input)) == :ok
+                  self.log.debug("-> #{s.inspect}")
+                  break
+                end
               end
               self.log.debug("<- byte stream end, 4 null bytes")
               enc.write_4(0)

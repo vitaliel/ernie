@@ -242,9 +242,9 @@ unsafe_process_now(Request, Asset) ->
 stream(Port, Sock, Res) ->
     port_wrapper:send(Port, term_to_binary(Res)),
     receive
-        {_, <<>>} ->
+        {Port, <<>>} ->
             gen_tcp:send(Sock, <<>>); % final
-        {_, Data} ->
+        {Port, Data} ->
             NewRes = gen_tcp:send(Sock, Data),
             stream(Port, Sock, NewRes);
         Any ->
