@@ -147,7 +147,10 @@ class Ernie
               info = t[:info, :stream, []]
               self.log.debug("<- " + info.inspect)
               write_berp(output, info)
+              self.read_berp(input) # == :ok
+
               write_berp(output, t[:reply, []])
+              self.read_berp(input) # == :ok
 
               enc = BERT::Encode.new(output)
 
@@ -155,8 +158,11 @@ class Ernie
                 # self.log.debug("<- byte stream write #{buf.length} bytes")
                 enc.write_4(buf.length)
                 enc.write_string(buf)
+                sres = self.read_berp(input)
+                # self.log.debug("-> #{sres.inspect}") if sres != :ok
+                break unless sres == :ok
               end
-              # self.log.debug("<- byte stream end, 4 null bytes")
+              self.log.debug("<- byte stream end, 4 null bytes")
               enc.write_4(0)
             ensure
               res.close

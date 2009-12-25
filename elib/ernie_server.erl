@@ -105,7 +105,7 @@ try_listen(Port, 0) ->
   error_logger:error_msg("Could not listen on port ~p~n", [Port]),
   {error, "Could not listen on port"};
 try_listen(Port, Times) ->
-  Res = gen_tcp:listen(Port, [binary, {packet, 4}, {active, false}, {reuseaddr, true}]),
+  Res = gen_tcp:listen(Port, [binary, {packet, 4}, {send_timeout, 6000}, {active, false}, {reuseaddr, true}]),
   case Res of
     {ok, LSock} ->
       error_logger:info_msg("Listening on port ~p~n", [Port]),
@@ -220,13 +220,17 @@ unsafe_process_now(Request, Asset) ->
           {asset, Port, Token} = Asset,
           logger:debug("Asset: ~p ~p~n", [Port, Token]),
 
-          case port_wrapper:rpc(Port, BinaryTerm) of
-              {ok, stream} ->
-                  % logger:debug("Ernie got stream~n", []),
-                  write_stream(Sock);
-              {ok, Data} ->
-                  gen_tcp:send(Sock, Data)
+          {ok, Data} = port_wrapper:rpc(Port, BinaryTerm),
+          Res = gen_tcp:send(Sock, Data),
+
+          case binary_to_term(Data) of
+              {info, stream, _Options} ->
+                  % logger:debug("blah blah~n", []),
+                  stream(Port, Sock, Res);
+              _ ->
+                  ok
           end,
+
           ok = gen_tcp:close(Sock);
       {cast, Mod, Fun, Args} ->
           logger:debug("Casting ~p:~p(~p)~n", [Mod, Fun, Args]),
@@ -235,12 +239,14 @@ unsafe_process_now(Request, Asset) ->
           {ok, _Data} = port_wrapper:rpc(Port, BinaryTerm)
   end.
 
-write_stream(Sock) ->
+stream(Port, Sock, Res) ->
+    port_wrapper:send(Port, term_to_binary(Res)),
     receive
-        {data, Data} ->
-            % logger:debug("Ernie got stream chunk~n", []),
-            gen_tcp:send(Sock, Data),
-            write_stream(Sock);
-        final -> ok;
-        Any -> logger:debug("write stream unknown message ~p~n", [Any])
+        {_, <<>>} ->
+            gen_tcp:send(Sock, <<>>); % final
+        {_, Data} ->
+            NewRes = gen_tcp:send(Sock, Data),
+            stream(Port, Sock, NewRes);
+        Any ->
+            logger:debug("Got something interesting: ~p~n", [Any])
     end.
