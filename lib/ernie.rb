@@ -117,7 +117,7 @@ class Ernie
   #
   # Loops forever
   def self.start
-    self.log.info("(#{Process.pid}) Starting")
+    self.log.info("#{Time.now}: (#{Process.pid}) Starting")
     self.log.debug(self.mods.inspect)
 
     input = IO.new(3)
@@ -129,19 +129,19 @@ class Ernie
       iruby = self.read_berp(input)
       unless iruby
         puts "Could not read BERP length header. Ernie server may have gone away. Exiting now."
-        self.log.info("(#{Process.pid}) Could not read BERP length header. Ernie server may have gone away. Exiting now.")
+        self.log.info("#{Time.now}: (#{Process.pid}) Could not read BERP length header. Ernie server may have gone away. Exiting now.")
         exit!
       end
 
       if iruby.size == 4 && iruby[0] == :call
         mod, fun, args = iruby[1..3]
-        self.log.info("-> " + iruby.inspect)
+        self.log.info("#{Time.now}: -> " + iruby.inspect)
 
         begin
           res = self.dispatch(mod, fun, args)
 
           if res.is_a?(IO)
-            self.log.info("<- byte stream")
+            self.log.info("#{Time.now}: <- byte stream")
 
             begin
               info = t[:info, :stream, []]
@@ -160,11 +160,11 @@ class Ernie
                 enc.write_string(buf)
 
                 unless (s = self.read_berp(input)) == :ok
-                  self.log.debug("-> #{s.inspect}")
+                  self.log.debug("#{Time.now}: -> #{s.inspect}")
                   break
                 end
               end
-              self.log.debug("<- byte stream end, 4 null bytes")
+              self.log.debug("#{Time.now}: <- byte stream end, 4 null bytes")
               enc.write_4(0)
             ensure
               res.close
@@ -177,7 +177,7 @@ class Ernie
           end
         rescue ServerError => e
           oruby = t[:error, t[:server, 0, e.class.to_s, e.message, e.backtrace]]
-          self.log.error("<- " + oruby.inspect)
+          self.log.error("#{Time.now}: <- " + oruby.inspect)
           self.log.error(e.backtrace.join("\n"))
           write_berp(output, oruby)
         rescue Object => e
@@ -188,7 +188,7 @@ class Ernie
         end
       elsif iruby.size == 4 && iruby[0] == :cast
         mod, fun, args = iruby[1..3]
-        self.log.info("-> " + [:cast, mod, fun, args].inspect)
+        self.log.info("#{Time.now}: -> " + [:cast, mod, fun, args].inspect)
         begin
           self.dispatch(mod, fun, args)
         rescue Object => e
@@ -199,7 +199,7 @@ class Ernie
       else
         self.log.error("-> " + iruby.inspect)
         oruby = t[:error, t[:server, 0, "Invalid request: #{iruby.inspect}"]]
-        self.log.error("<- " + oruby.inspect)
+        self.log.error("#{Time.now}: <- " + oruby.inspect)
         write_berp(output, oruby)
       end
     end
