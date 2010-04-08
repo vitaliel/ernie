@@ -62,6 +62,10 @@ OptionParser.new do |opts|
     options[:detached] = true
   end
 
+  opts.on("--noinput", "Ensures that the Erlang runtime system never tries to read any input") do
+    options[:noinput] = true
+  end
+
   opts.on("-P", "--pidfile PIDFILE", "Location to write pid file.") do |x|
     options[:pidfile] = x
   end
@@ -105,9 +109,11 @@ else
   log_level = options[:log_level] || 2
   pidfile = options[:pidfile] ? "-ernie_server_app pidfile \"'#{options[:pidfile]}'\"" : ''
   detached = options[:detached] ? '-detached' : ''
+  noinput = options[:noinput] ? '-noinput' : ''
 
   cmd = %Q{erl -boot start_sasl \
                #{detached} \
+               #{noinput} \
                +Bc \
                +K true \
                -smp enable \
