@@ -105,7 +105,7 @@ try_listen(Port, 0) ->
   error_logger:error_msg("Could not listen on port ~p~n", [Port]),
   {error, "Could not listen on port"};
 try_listen(Port, Times) ->
-  Res = gen_tcp:listen(Port, [binary, {packet, 4}, {send_timeout, 6000}, {active, false}, {reuseaddr, true}]),
+  Res = gen_tcp:listen(Port, [binary, {packet, 4}, {send_timeout, 24000}, {active, false}, {reuseaddr, true}]),
   case Res of
     {ok, LSock} ->
       error_logger:info_msg("Listening on port ~p~n", [Port]),
