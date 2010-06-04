@@ -138,7 +138,8 @@ class Ernie
         self.log.info("#{Time.now}: -> " + iruby.inspect)
 
         begin
-          res = self.dispatch(mod, fun, args)
+          res = nil
+          time = Benchmark.measure { res = self.dispatch(mod, fun, args) }
 
           if res.is_a?(IO)
             self.log.info("#{Time.now}: <- byte stream")
@@ -171,7 +172,7 @@ class Ernie
             end
           else
             oruby = t[:reply, res]
-            self.log.debug("<- " + oruby.inspect)
+            self.log.debug("#{Time.now}: <- " + oruby.inspect + " completed (mod: #{mod}, fun: #{fun.inspect}, args: #{args.inspect}) in #{time.total}")
 
             write_berp(output, oruby)
           end
