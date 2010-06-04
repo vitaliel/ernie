@@ -173,7 +173,7 @@ class Ernie
           else
             oruby = t[:reply, res]
             self.log.debug("#{Time.now}: <- " + oruby.inspect)
-
+            self.log.info("Completed #{mod}:#{fun}(#{args.inspect}) in #{time.total}")
             write_berp(output, oruby)
           end
         rescue ServerError => e
@@ -187,7 +187,6 @@ class Ernie
           self.log.error(e.backtrace.join("\n"))
           write_berp(output, oruby)
         end
-        self.log.info("Completed #{mod}.#{fun}(#{args.inspect}) in #{time.total}")
       elsif iruby.size == 4 && iruby[0] == :cast
         mod, fun, args = iruby[1..3]
         self.log.info("#{Time.now}: -> " + [:cast, mod, fun, args].inspect)
