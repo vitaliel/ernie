@@ -4,6 +4,7 @@ $:.unshift(File.join(File.dirname(__FILE__), *%w[.. lib]))
 ERNIE_ROOT = File.join(File.dirname(__FILE__), *%w[..])
 
 DEFAULT_ERLANG_CODEPATHS = %w[ebin]
+DEFAULT_IP = '127.0.0.1'
 DEFAULT_PORT = 8000
 
 def rel(path)
@@ -44,6 +45,10 @@ OptionParser.new do |opts|
 
   opts.on("-h HANDLER", "--handler HANDLER", "Handler ruby file") do |x|
     options[:handler] = x
+  end
+
+  opts.on("-i IP", "--ip IP", "IP") do |x|
+    options[:ip] = x
   end
 
   opts.on("-p PORT", "--port PORT", "Port") do |x|
@@ -91,8 +96,9 @@ if command = ARGV[0]
 
   require 'rubygems'
   require 'bertrpc'
+  ip = options[:ip] || DEFAULT_IP
   port = options[:port] || DEFAULT_PORT
-  svc = BERTRPC::Service.new('localhost', port)
+  svc = BERTRPC::Service.new(ip, port)
   puts svc.call.__admin__.send(command.gsub(/-/, '_'))
 else
   if !options[:handler]
@@ -104,6 +110,7 @@ else
   Process::Sys.setuid(options[:uid]) if options[:uid]
 
   handler = options[:handler]
+  ip = options[:ip] || DEFAULT_IP
   port = options[:port] || DEFAULT_PORT
   number = options[:number] || 1
   log_level = options[:log_level] || 2
@@ -119,6 +126,7 @@ else
                -smp enable \
                #{code_paths}
                #{pidfile} \
+               -ernie_server_app ip '"#{ip}"' \
                -ernie_server_app port #{port} \
                -ernie_server_app handler '"#{handler}"' \
                -ernie_server_app number #{number} \

@@ -43,10 +43,10 @@ asset_freed() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Port]) ->
+init([[IP], [Port]]) ->
   process_flag(trap_exit, true),
   error_logger:info_msg("~p starting~n", [?MODULE]),
-  {ok, LSock} = try_listen(Port, 500),
+  {ok, LSock} = try_listen(IP, Port, 500),
   spawn(fun() -> loop(LSock) end),
   {ok, #state{lsock = LSock}}.
 
@@ -101,19 +101,19 @@ code_change(_OldVersion, State, _Extra) -> {ok, State}.
 %% Internal
 %%====================================================================
 
-try_listen(Port, 0) ->
-  error_logger:error_msg("Could not listen on port ~p~n", [Port]),
+try_listen(IP, Port, 0) ->
+  error_logger:error_msg("Could not listen on ~p and port ~p~n", [IP, Port]),
   {error, "Could not listen on port"};
-try_listen(Port, Times) ->
-  Res = gen_tcp:listen(Port, [binary, {packet, 4}, {send_timeout, 24000}, {active, false}, {reuseaddr, true}, {backlog, 128}]),
+try_listen(IP, Port, Times) ->
+  Res = gen_tcp:listen(Port, [binary, {ip, element(2, inet_parse:address(IP))}, {packet, 4}, {send_timeout, 24000}, {active, false}, {reuseaddr, true}, {backlog, 128}]),
   case Res of
     {ok, LSock} ->
-      error_logger:info_msg("Listening on port ~p~n", [Port]),
+      error_logger:info_msg("Listening on ~p and port ~p~n", [IP, Port]),
       {ok, LSock};
     {error, Reason} ->
-      error_logger:info_msg("Could not listen on port ~p: ~p~n", [Port, Reason]),
+      error_logger:info_msg("Could not listen on ~p and port ~p: ~p~n", [IP, Port, Reason]),
       timer:sleep(5000),
-      try_listen(Port, Times - 1)
+      try_listen(IP, Port, Times - 1)
   end.
 
 loop(LSock) ->
